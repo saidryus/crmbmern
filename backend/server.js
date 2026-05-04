@@ -6,7 +6,6 @@ const cors = require('cors');
 const authRoutes    = require('./routes/authRoutes');
 const productRoutes = require('./routes/productRoutes');
 const orderRoutes   = require('./routes/orderRoutes');
-const seedRoutes    = require('./routes/seedRoutes');
 
 const app  = express();
 const PORT = process.env.PORT || 5000;
@@ -34,7 +33,6 @@ app.use(express.json());
 app.use('/api/auth',     authRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/orders',   orderRoutes);
-app.use('/api/seed',     seedRoutes);
 
 // ── Health check ─────────────────────────────────────────────
 app.get('/api/health', (_req, res) => {
