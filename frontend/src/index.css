@@ -1,0 +1,112 @@
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;0,700;1,300;1,400;1,600&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,300&family=DM+Mono:wght@400;500&display=swap');
+@import "tailwindcss";
+
+/* ─── Design Tokens ─────────────────────────────────────────── */
+:root {
+  --ink:        #1e140a;      /* deep tobacco — primary text    */
+  --ink-soft:   #4a3728;      /* medium brown — secondary text  */
+  --ink-muted:  #8a6e5a;      /* dusty taupe — muted text       */
+  --parchment:  #f5efe6;      /* aged paper — page bg           */
+  --parchment2: #ede4d8;      /* slightly darker parchment      */
+  --parchment3: #e2d5c4;      /* card borders / dividers        */
+  --cream:      #faf7f2;      /* near-white surface             */
+  --card:       #ffffff;      /* card bg                        */
+  --amber:      #c8913a;      /* warm amber — accent            */
+  --amber-light:#e8b96a;      /* lighter amber                  */
+  --amber-pale: #f5e4c0;      /* amber tint bg                  */
+  --rose:       #c4796a;      /* dusty rose — warm highlight    */
+  --rose-pale:  #f5e8e5;      /* rose tint bg                   */
+  --sage:       #7a9080;      /* muted sage — success           */
+  --sage-pale:  #e8f0ec;      /* sage tint bg                   */
+  --espresso:   #1e140a;      /* darkest — buttons              */
+  --espresso2:  #2e1e10;      /* slightly lighter espresso      */
+  --espresso3:  #3e2a18;      /* hover state                    */
+}
+
+@layer base {
+  * {
+    -webkit-tap-highlight-color: transparent;
+    box-sizing: border-box;
+  }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: 'DM Sans', system-ui, sans-serif;
+    background-color: var(--parchment);
+    color: var(--ink);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  ::-webkit-scrollbar { width: 0; height: 0; }
+}
+
+@layer utilities {
+  .font-serif {
+    font-family: 'Cormorant Garamond', Georgia, serif;
+  }
+  .font-mono-custom {
+    font-family: 'DM Mono', 'Courier New', monospace;
+  }
+
+  /* Noise texture overlay for depth */
+  .noise::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none;
+    border-radius: inherit;
+  }
+
+  .card-shadow {
+    box-shadow: 0 1px 2px rgba(30,20,10,0.04), 0 4px 16px rgba(30,20,10,0.07);
+  }
+  .card-shadow-lg {
+    box-shadow: 0 4px 8px rgba(30,20,10,0.06), 0 16px 48px rgba(30,20,10,0.1);
+  }
+}
+
+/* ─── Print Styles ──────────────────────────────────────────── */
+@media print {
+  /* Hide everything on the page */
+  body * {
+    visibility: hidden !important;
+  }
+
+  /* Show only the receipt card and all its children */
+  #print-receipt,
+  #print-receipt * {
+    visibility: visible !important;
+  }
+
+  /* Position the receipt at the top-left of the page */
+  #print-receipt {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    max-width: 400px !important;
+    margin: 0 auto !important;
+    padding: 24px !important;
+    box-shadow: none !important;
+    border: none !important;
+    background: #fff !important;
+    color: #000 !important;
+    font-family: 'Courier New', monospace !important;
+    font-size: 13px !important;
+    line-height: 1.6 !important;
+  }
+
+  /* Force colors to print */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+}
+
+/* ─── Ripple keyframe ───────────────────────────────────────── */
+@keyframes crmb-ripple {
+  to { transform: scale(1); opacity: 0; }
+}
