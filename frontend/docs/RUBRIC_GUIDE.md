@@ -203,16 +203,129 @@ router.delete('/:id', protect, del);  // admin only
 
 ### API Integration — Axios/fetch, loading & error handling (10 pts)
 
-**Where:** `frontend/src/api/`, `frontend/src/context/ProductsContext.jsx`
+**Where:** `frontend/src/api/`, `frontend/src/context/ProductsContext.jsx`, `frontend/src/pages/Checkout.jsx`, `frontend/src/admin/pages/AdminDashboard.jsx`
 
-**`client.js` — the fetch wrapper:**
+---
+
+**The simple version of what's happening:**
+
+The frontend and backend are two separate programs. The only way they talk is through the API. Every feature follows this pattern — the frontend asks, the backend goes to the database, and sends the answer back.
+
+---
+
+**"Give me all products" — Menu loads**
+
+Frontend asks (`frontend/src/api/products.js`):
+```js
+export const getProducts = () => apiFetch('/products');
+```
+
+Backend receives it (`backend/routes/productRoutes.js`):
+```js
+router.get('/', async (req, res) => {
+  const products = await Product.find().sort({ createdAt: 1 });
+  res.json(products);
+});
+```
+Goes to MongoDB, gets all products, sends them back as JSON. `ProductsContext` stores the result and the menu displays them.
+
+---
+
+**"Save this order" — Customer checks out**
+
+Frontend sends it (`frontend/src/pages/Checkout.jsx`):
+```js
+await createOrder({
+  orderId: newId,
+  items: snapshot,
+  total,
+});
+```
+
+Backend saves it (`backend/routes/orderRoutes.js`):
+```js
+router.post('/', async (req, res) => {
+  const { orderId, items, total } = req.body;
+  const order = await Order.create({ orderId, items, total });
+  res.status(201).json(order);
+});
+```
+Creates a permanent record in MongoDB. The admin dashboard will see this order.
+
+---
+
+**"Check these credentials" — Admin logs in**
+
+Frontend sends it (`frontend/src/api/auth.js`):
+```js
+export const login = async (username, password) => {
+  const data = await apiFetch('/auth/login', {
+    method: 'POST',
+    body: JSON.stringify({ username, password }),
+  });
+  localStorage.setItem('isAdmin', 'true');
+};
+```
+
+Backend checks it (`backend/routes/authRoutes.js`):
+```js
+router.post('/login', async (req, res) => {
+  const admin = await Admin.findOne({ username });
+  const match = await admin.matchPassword(password); // bcrypt compare
+  if (!match) return res.status(401).json({ message: 'Invalid credentials' });
+  res.json({ success: true, username: admin.username });
+});
+```
+Finds the admin in MongoDB, compares the password against the bcrypt hash. If it matches, the frontend sets `isAdmin` in localStorage.
+
+---
+
+**"Save this new product" — Admin adds a product**
+
+Frontend sends it (`frontend/src/api/products.js`):
+```js
+export const createProduct = (data) =>
+  apiFetch('/products', { method: 'POST', body: JSON.stringify(data) });
+```
+
+Backend saves it (`backend/routes/productRoutes.js`):
+```js
+router.post('/', protect, async (req, res) => {
+  const product = await Product.create(req.body);
+  res.status(201).json(product);
+});
+```
+`protect` checks the admin header first — if not logged in, returns 401. If logged in, saves to MongoDB and sends it back. The menu shows it immediately.
+
+---
+
+**"Give me all orders" — Admin dashboard loads**
+
+Frontend asks (`frontend/src/api/orders.js`):
+```js
+export const getOrders = () => apiFetch('/orders');
+```
+
+Backend returns them (`backend/routes/orderRoutes.js`):
+```js
+router.get('/', protect, async (req, res) => {
+  const orders = await Order.find().sort({ createdAt: -1 });
+  res.json(orders);
+});
+```
+`protect` blocks anyone not logged in. For the admin, returns all orders from MongoDB sorted newest first.
+
+---
+
+**The one thing connecting all of this — `frontend/src/api/client.js`:**
+
+Every single frontend call above goes through this function. It handles three things automatically:
 ```js
 export async function apiFetch(path, options = {}) {
   const isAdmin = localStorage.getItem('isAdmin') === 'true';
   const headers = {
     'Content-Type': 'application/json',
     ...(isAdmin ? { 'X-Admin-Logged-In': 'true' } : {}),
-    ...options.headers,
   };
   const res = await fetch(`${BASE_URL}${path}`, { ...options, headers });
   const data = await res.json().catch(() => ({}));
@@ -220,31 +333,33 @@ export async function apiFetch(path, options = {}) {
   return data;
 }
 ```
+- Adds the correct backend URL automatically
+- Adds the admin header when the user is logged in
+- Throws a readable error if something goes wrong
 
-**Loading state in `ProductsContext`:**
+---
+
+**Loading and error handling in `ProductsContext`:**
 ```js
 const [loading, setLoading] = useState(true);
 const [error,   setError]   = useState(null);
 
 const refreshProducts = async () => {
-  setLoading(true);
+  setLoading(true);   // show skeleton cards
   setError(null);
   try {
     const data = await getProducts();
     setProducts(data);
   } catch (err) {
-    setError(err.message);
+    setError(err.message); // show error message on screen
   } finally {
-    setLoading(false);
+    setLoading(false);  // always hide skeleton cards when done
   }
 };
 ```
-
-**What to say:**
-- `loading` state shows skeleton cards while products are being fetched
-- `error` state shows "Could not load menu — make sure the backend is running" if the API fails
-- `finally` block ensures `loading` is always set to `false` regardless of success or failure
-- All API calls use native `fetch` (no Axios needed — fetch is built into modern browsers)
+- `loading = true` → skeleton cards show while waiting for the API
+- `error` → "Could not load menu" message if the backend is unreachable
+- `finally` → loading always turns off whether the request succeeded or failed
 
 ---
 
