@@ -18,224 +18,220 @@ Good architecture means:
 
 ---
 
-## 🧱 The Tech Stack — What We Use and Why
+## 🧱 The Tech Stack — MERN
+
+CRMB is a full **MERN stack** application:
+
+| Letter | Technology | Role |
+|--------|------------|------|
+| **M** | MongoDB | Database — stores products, orders, and admin accounts in the cloud |
+| **E** | Express.js | REST API server — handles HTTP requests and talks to the database |
+| **R** | React | Frontend UI — what the customer and admin see and interact with |
+| **N** | Node.js | Runtime — runs the Express server |
+
+### Supporting Technologies
 
 | Technology | What it is | Why we chose it |
 |---|---|---|
-| **React** | The UI framework | Industry standard, component-based, huge community |
 | **Vite** | Build tool & dev server | Extremely fast, modern, simple config |
 | **Tailwind CSS** | Styling utility classes | Fast to write, consistent, no CSS file clutter |
 | **Framer Motion** | Animation library | The best React animation library, simple API |
 | **React Router DOM** | Page navigation | Standard routing for React apps |
-| **Lucide React** | Icon library | Clean SVG icons, consistent style, tree-shakeable |
+| **Mongoose** | MongoDB object modelling | Schema validation, clean query API |
+| **bcryptjs** | Password hashing | Securely stores admin password in the database |
+| **cors** | Cross-origin requests | Allows the frontend to call the backend API |
+| **nodemon** | Dev server auto-restart | Restarts the backend when files change |
+| **Lucide React** | Icon library | Clean SVG icons, consistent style |
 | **vite-plugin-pwa** | PWA support | Makes the app installable and offline-capable |
 | **Web Audio API** | Sound synthesis | Built into browsers, no files needed, works offline |
 
-**No backend. No database. Why?**
-
-This is a single-device kiosk. All data (cart, products, orders) lives in the browser's `localStorage`. This means:
-- Zero server costs
-- Works completely offline
-- No network latency
-- Simple deployment (just serve the built files)
-
-The tradeoff: data is tied to one device. For a multi-device setup, a backend would be needed.
-
 ---
 
-## 📁 Folder Structure — What Goes Where and Why
+## 📁 Full Project Structure
 
 ```
-crmb-kiosk/
-├── public/              ← Static files served as-is (favicon, icons)
-├── src/
-│   ├── admin/           ← Everything staff-only (hidden from customers)
-│   │   └── pages/
-│   │       ├── AdminLogin.jsx
-│   │       └── AdminDashboard.jsx
-│   │
-│   ├── components/      ← Reusable UI pieces used across multiple pages
-│   │   ├── admin/
-│   │   │   └── ProtectedRoute.jsx   ← Route guard for admin pages
-│   │   ├── cart/
-│   │   │   └── CartButton.jsx       ← The persistent cart button in headers
-│   │   └── common/
-│   │       ├── NowPlaying.jsx       ← Jazz radio widget
-│   │       ├── OfflineBadge.jsx     ← Floating offline indicator
-│   │       ├── RippleButton.jsx     ← Button with ripple + sound
-│   │       └── SkeletonCard.jsx     ← Loading placeholder cards
-│   │
-│   ├── context/         ← Global state — shared data for the whole app
-│   │   ├── AudioContext.jsx         ← Jazz radio state
-│   │   ├── CartContext.jsx          ← Shopping cart state
-│   │   ├── FlyContext.jsx           ← Fly-to-cart animation state
-│   │   ├── ProductsContext.jsx      ← Menu product catalogue
-│   │   └── ToastContext.jsx         ← Pop-up notifications
-│   │
-│   ├── data/            ← Static seed data (the original 12 products)
-│   │   └── products.js
-│   │
-│   ├── hooks/           ← Reusable behaviour logic (not tied to any one component)
-│   │   ├── useIdleTimeout.js        ← Auto-reset kiosk after inactivity
-│   │   ├── useLongPress.js          ← Detect held press (admin trigger)
-│   │   ├── useNetwork.js            ← Online/offline detection
-│   │   └── useSound.js              ← Synthesized UI sounds
-│   │
-│   ├── pages/           ← Full screens the customer sees
-│   │   ├── Splash.jsx               ← Welcome screen
-│   │   ├── Menu.jsx                 ← Main ordering screen
-│   │   ├── ProductDetails.jsx       ← Single product view
-│   │   ├── Cart.jsx                 ← Order review
-│   │   └── Checkout.jsx             ← Payment & confirmation
-│   │
-│   ├── utils/           ← Pure helper functions (no React, no state)
-│   │   ├── formatPrice.js           ← Format numbers as ₱ currency
-│   │   └── generateOrderId.js       ← Create unique order IDs
-│   │
-│   ├── App.jsx          ← Root: providers, routing, page transitions
-│   ├── main.jsx         ← Entry point — mounts React into the HTML
-│   └── index.css        ← Design tokens, Tailwind, print styles
+crmbmern/
 │
-├── docs/                ← All documentation guides
-├── vite.config.js       ← Build configuration
-└── package.json         ← Dependencies and scripts
+├── backend/                        ← Express + Node.js server
+│   ├── models/
+│   │   ├── Product.js              ← Mongoose schema for menu items
+│   │   ├── Order.js                ← Mongoose schema for customer orders
+│   │   └── Admin.js                ← Mongoose schema for staff accounts (bcrypt)
+│   ├── routes/
+│   │   ├── authRoutes.js           ← POST /api/auth/login
+│   │   ├── productRoutes.js        ← CRUD /api/products
+│   │   └── orderRoutes.js          ← POST + GET /api/orders
+│   ├── middleware/
+│   │   └── authMiddleware.js       ← protect() — guards admin-only routes
+│   ├── server.js                   ← Entry point, connects to MongoDB, starts Express
+│   ├── seed.js                     ← One-time script to populate the database
+│   ├── .env                        ← Local secrets (not committed to git)
+│   └── .env.example                ← Template for .env
+│
+└── frontend/                       ← React + Vite app
+    ├── public/                     ← Static files (favicon, icons)
+    └── src/
+        ├── admin/
+        │   └── pages/
+        │       ├── AdminLogin.jsx  ← Staff login (calls POST /api/auth/login)
+        │       └── AdminDashboard.jsx ← Product + order management
+        │
+        ├── api/                    ← All backend communication lives here
+        │   ├── client.js           ← Base fetch wrapper (URL + auth header)
+        │   ├── auth.js             ← login(), logout()
+        │   ├── products.js         ← getProducts(), createProduct(), etc.
+        │   └── orders.js           ← createOrder(), getOrders()
+        │
+        ├── components/
+        │   ├── admin/
+        │   │   └── ProtectedRoute.jsx  ← Checks isAdmin in localStorage
+        │   ├── cart/
+        │   │   └── CartButton.jsx
+        │   └── common/
+        │       ├── NowPlaying.jsx
+        │       ├── OfflineBadge.jsx
+        │       ├── RippleButton.jsx
+        │       └── SkeletonCard.jsx
+        │
+        ├── context/                ← Global React state
+        │   ├── AudioContext.jsx
+        │   ├── CartContext.jsx     ← useReducer cart (uses _id from MongoDB)
+        │   ├── FlyContext.jsx
+        │   ├── ProductsContext.jsx ← Fetches from /api/products
+        │   └── ToastContext.jsx
+        │
+        ├── hooks/
+        │   ├── useIdleTimeout.js
+        │   ├── useLongPress.js
+        │   ├── useNetwork.js
+        │   └── useSound.js
+        │
+        ├── pages/
+        │   ├── Splash.jsx
+        │   ├── Menu.jsx            ← Reads products from ProductsContext
+        │   ├── ProductDetails.jsx  ← Uses _id for routing (/product/:id)
+        │   ├── Cart.jsx            ← Uses _id for cart operations
+        │   └── Checkout.jsx        ← POSTs order to /api/orders
+        │
+        ├── utils/
+        │   ├── formatPrice.js
+        │   └── generateOrderId.js
+        │
+        ├── App.jsx
+        ├── main.jsx
+        └── index.css
 ```
-
-### Why this folder structure?
-
-**`pages/` vs `components/`**
-Pages are full screens — they fill the entire viewport and are tied to a URL route. Components are smaller, reusable pieces that appear inside pages. This separation makes it immediately clear what something is when you open a file.
-
-**`context/` separate from `hooks/`**
-Context files contain both a Provider (the data source) and a custom hook (the way to read that data). They're tightly coupled — you can't use one without the other. Hooks in `hooks/` are standalone utilities with no Provider — they work anywhere.
-
-**`utils/` for pure functions**
-`formatPrice` and `generateOrderId` are just functions — they take input and return output, no React involved. Keeping them in `utils/` means they can be used anywhere without importing React.
-
-**`admin/` separate from `pages/`**
-Admin pages are intentionally isolated. This makes it visually clear in the codebase that these are staff-only screens, and it's easier to add access controls around the whole folder.
 
 ---
 
 ## 🔌 How the App Starts Up
 
-When you open the app in a browser, this is what happens:
-
+### Backend startup:
 ```
-1. Browser loads index.html
-2. index.html loads main.jsx
-3. main.jsx mounts the React app into <div id="root">
-4. App.jsx renders — wraps everything in providers:
-   ProductsProvider → CartProvider → AudioProvider → FlyProvider → ToastProvider
-5. ProductsProvider checks localStorage for products
-   → If none found: seeds from products.js
-6. CartProvider checks localStorage for cart
-   → Restores any saved cart items
-7. React Router reads the URL and renders the matching page
-8. The page renders with all context data available
+node server.js
+    ↓
+dotenv loads .env variables
+    ↓
+mongoose.connect(MONGO_URI) — connects to MongoDB Atlas
+    ↓
+On success: app.listen(5000) — Express starts accepting requests
+On failure: process.exit(1) — server won't start without a DB
+```
+
+### Frontend startup:
+```
+Browser opens localhost:5173
+    ↓
+main.jsx mounts React into <div id="root">
+    ↓
+App.jsx renders all Providers:
+  ProductsProvider → CartProvider → AudioProvider → FlyProvider → ToastProvider
+    ↓
+ProductsProvider calls GET /api/products
+    ↓
+Backend queries MongoDB → returns products array
+    ↓
+Products stored in React state → menu renders
+    ↓
+CartProvider restores cart from localStorage
+    ↓
+React Router reads URL → renders matching page
 ```
 
 ---
 
-## 🛣️ Routing — How Pages Connect
+## 🛣️ Routing
 
-React Router DOM manages navigation. There are two types of routes:
-
-**Customer routes** (wrapped in `PageWrapper` for slide animations):
+**Customer routes** (slide animations, idle timeout):
 ```
-/           → Splash screen
-/menu       → Menu page
-/product/:id → Product details (e.g. /product/4)
-/cart       → Cart page
-/checkout   → Checkout page
+/            → Splash screen
+/menu        → Menu page
+/product/:id → Product details (id = MongoDB _id)
+/cart        → Cart page
+/checkout    → Checkout page
 ```
 
 **Admin routes** (no slide animation, no idle timeout):
 ```
 /admin-login → Login page
-/admin       → Dashboard (protected — redirects to /admin-login if not authenticated)
+/admin       → Dashboard (protected — redirects if not logged in)
 ```
-
-**Why are admin routes outside the PageWrapper?**
-The slide animation and idle timeout are designed for the customer flow. Admin users shouldn't have their session reset after 2 minutes of inactivity, and the slide animation doesn't make sense for a dashboard.
 
 ---
 
 ## 🔒 Security Model
 
-This is a kiosk app, not a banking app. The security is designed to be:
-- **Invisible to customers** — they never see admin features
-- **Accessible to staff** — who know the hidden gesture
-- **Simple** — no complex auth infrastructure needed
-
-**What's protected:**
-- Admin routes require `localStorage.isAdmin === 'true'`
-- Admin access requires a 3-second hold on the logo (hidden from customers)
-- Credentials are hardcoded (`crmb` / `admin`) — acceptable for a single-device kiosk
-
-**What's NOT protected (intentionally):**
-- Cart data — customers can see their own cart
-- Product data — the menu is public
-- Order history — stored locally, only visible on that device
+| Layer | Mechanism |
+|-------|-----------|
+| Admin login | bcrypt password comparison in `Admin.matchPassword()` |
+| Protected API routes | `protect` middleware checks `X-Admin-Logged-In: true` header |
+| Protected frontend routes | `ProtectedRoute` checks `localStorage.isAdmin === 'true'` |
+| Database | MongoDB Atlas with IP allowlist and user credentials |
+| Secrets | Stored in `.env`, never committed to git |
 
 ---
 
-## 🧩 Component Architecture — How Components Relate
+## 🌐 Deployment Architecture
 
 ```
-App (root)
-├── Providers (data layer — invisible to users)
-│   ├── ProductsProvider
-│   ├── CartProvider
-│   ├── AudioProvider
-│   ├── FlyProvider
-│   └── ToastProvider
-│
-├── OfflineBadge (always visible, floats above everything)
-│
-└── Pages (one visible at a time, based on URL)
-    ├── Splash
-    │   └── NowPlaying
-    ├── Menu
-    │   ├── CartButton
-    │   ├── NowPlaying
-    │   ├── SkeletonCard (×6, during loading)
-    │   └── ProductCard (×N, after loading)
-    ├── ProductDetails
-    │   └── CartButton
-    ├── Cart
-    │   └── RippleButton (×2)
-    ├── Checkout
-    │   └── MorphButton
-    ├── AdminLogin
-    └── AdminDashboard
-        ├── ProductFormModal
-        └── DeleteConfirmModal
+Customer's browser
+        ↓ HTTPS
+  Vercel (frontend)
+  https://crmbmern.vercel.app
+        ↓ HTTPS API calls
+  Render (backend)
+  https://crmb-backend.onrender.com
+        ↓ MongoDB driver
+  MongoDB Atlas (database)
+  boywonder.oawrar9.mongodb.net
 ```
+
+The frontend and backend are deployed separately. The frontend is a static build (HTML/CSS/JS files) served by Vercel's CDN. The backend is a Node.js process running on Render's servers.
 
 ---
 
 ## ❓ Common Instructor Questions
 
-**Q: Why React and not Vue or Angular?**
-React is the most widely used frontend framework in the industry. It has the largest ecosystem, the most job opportunities, and the most learning resources. For a team learning web development, React is the most valuable skill to build.
+**Q: Why MERN and not another stack?**
+MERN is one of the most widely taught and used full-stack JavaScript combinations. Using JavaScript on both frontend and backend means one language across the entire project — easier to context-switch, shared utility functions, and a consistent mental model.
 
-**Q: Why Vite and not Create React App?**
-Create React App is outdated and no longer maintained. Vite is the modern standard — it's significantly faster (dev server starts in milliseconds vs seconds), uses modern ES modules, and has better plugin support.
+**Q: Why separate frontend and backend folders?**
+Clear separation of concerns. The frontend is a React app that could theoretically work with any backend. The backend is an API that could serve any frontend. Keeping them separate makes each part independently deployable and testable.
 
-**Q: Why Tailwind CSS and not regular CSS?**
-Tailwind lets you style components directly in JSX without switching between files. For a team project, it also enforces consistency — everyone uses the same spacing, sizing, and color scales. The design tokens in `index.css` extend Tailwind with CRMB-specific colors.
+**Q: Why MongoDB instead of a relational database like MySQL?**
+MongoDB stores data as JSON-like documents, which maps naturally to JavaScript objects. Products, orders, and admin accounts are all naturally document-shaped. There are no complex relationships that would benefit from SQL joins.
 
-**Q: Why no TypeScript?**
-TypeScript adds type safety but also significant complexity for a team that may be learning React for the first time. The project uses JSDoc comments and clear naming conventions to compensate. TypeScript would be the natural next step for a production version.
+**Q: Why Render for the backend and Vercel for the frontend?**
+Vercel is purpose-built for frontend frameworks like React/Vite — zero-config deployment, global CDN, automatic HTTPS. Render is better suited for Node.js servers — it runs persistent processes, supports environment variables, and has a free tier for backend services.
 
 **Q: What would you change if this were a real production app?**
-1. Add a backend (Node.js + Express or similar) for persistent, multi-device data
-2. Add TypeScript for type safety
-3. Add proper authentication (JWT tokens, not localStorage flags)
+1. Add proper JWT authentication with token expiry
+2. Add rate limiting to the API
+3. Add input sanitization middleware
 4. Add unit and integration tests
-5. Add error boundaries for graceful error handling
-6. Use a real image upload service instead of URL pasting
+5. Use a real payment gateway (Stripe, PayMongo)
+6. Add image upload support instead of URL pasting
+7. Add WebSocket support for real-time order status updates
 
 ---
 
