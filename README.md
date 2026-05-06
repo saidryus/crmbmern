@@ -38,15 +38,14 @@ npm install
 cp .env.example .env
 # Edit .env — set MONGO_URI, PORT, ADMIN_USERNAME, ADMIN_PASSWORD
 
-# Seed the database (run once — inserts 12 products + admin account)
-node seed.js
-
-# Start the server
+# Start the server — database is seeded automatically on first run
 npm run dev       # development (nodemon)
 npm start         # production
 ```
 
 Server runs on **http://localhost:5000**
+
+> The server checks if the database is empty on every startup. If it is, it automatically inserts the 12 default products and creates the admin account. No need to run `seed.js` manually.
 
 ---
 
