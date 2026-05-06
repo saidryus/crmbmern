@@ -278,20 +278,64 @@ const refreshProducts = async () => {
 
 **Where:** Every component. Key examples:
 
-| Component | useState usage |
-|---|---|
-| `Menu.jsx` | `activeCategory`, `search`, `addedId` |
-| `Cart.jsx` | `removingId` — drives removal animation |
-| `Checkout.jsx` | `status`, `orderId`, `orderTotal`, `cartSnapshot`, `queueStep`, `countdown` |
-| `AdminLogin.jsx` | `username`, `password`, `showPw`, `error`, `shaking`, `loading` |
-| `AdminDashboard.jsx` | `modal`, `delTarget`, `orders`, `ordersErr` |
-| `ProductDetails.jsx` | `added`, `qty`, `qtyDir` |
-| `NowPlaying.jsx` | `trackIdx`, `visible`, `expanded` |
+**What is `useState` in plain terms?**
+`useState` is React's way of giving a component its own memory. When that memory changes, the screen updates automatically to reflect it. Think of it like a sticky note on a whiteboard — when you erase it and write something new, everyone looking at the whiteboard sees the change immediately.
 
-**What to say:**
-- `useState` is used for local component state — information only that component needs
-- When state changes, React re-renders the component automatically
-- State is initialized with sensible defaults (e.g. `activeCategory = 'All'`, `loading = true`)
+Every `useState` has two parts:
+- The **value** — what's currently written on the sticky note
+- The **setter** — the pen you use to change it
+
+```js
+const [search, setSearch] = useState('');
+//     ↑ value   ↑ setter    ↑ starting value
+```
+
+**What each one actually does in the app:**
+
+**`Menu.jsx`**
+
+| State | Starting value | What it controls on screen |
+|---|---|---|
+| `activeCategory` | `'All'` | Which filter pill is highlighted. When changed, the product grid re-filters instantly to show only that category. |
+| `search` | `''` | What the customer typed in the search bar. Every keystroke updates this, which re-filters the product list in real time. |
+| `addedId` | `null` | Tracks which product was just added to the cart. That product's "Add" button temporarily changes to "Added ✓" with a green color. Resets after 950ms. |
+
+**`Cart.jsx`**
+
+| State | Starting value | What it controls on screen |
+|---|---|---|
+| `removingId` | `null` | When the trash button is tapped, this is set to that item's ID. The item slides right and fades out. After 280ms the item is actually deleted. Without this, the item would just disappear instantly with no animation. |
+
+**`Checkout.jsx`**
+
+| State | Starting value | What it controls on screen |
+|---|---|---|
+| `status` | `'summary'` | The main switch controlling which screen is shown. `'summary'` = order review, `'loading'` = queue animation, `'success'` = receipt. |
+| `orderId` | `''` | The generated order reference (e.g. `CRMB-LX4K2A-F3R9`). Shown on the receipt. |
+| `orderTotal` | `0` | The total saved before the cart is cleared. The receipt needs this number even after the cart is empty. |
+| `cartSnapshot` | `[]` | A copy of all cart items saved before clearing. The receipt shows the itemised list from this snapshot. |
+| `queueStep` | `'received'` | Which step of the queue animation is active. Changes every 600–1200ms: received → preparing → baking → ready. |
+| `countdown` | `0` | The "Ready in ~X min" number shown during the queue animation. Counts down as steps progress. |
+
+**`AdminLogin.jsx`**
+
+| State | Starting value | What it controls on screen |
+|---|---|---|
+| `username` | `''` | What the staff member typed in the username field. |
+| `password` | `''` | What the staff member typed in the password field. |
+| `showPw` | `false` | Whether the password is shown as dots or plain text. Toggled by the eye icon. |
+| `error` | `''` | The red error message shown when credentials are wrong. Empty string = no message shown. |
+| `shaking` | `false` | When `true`, the login form plays a shake animation. Set to `true` on wrong credentials, back to `false` after 600ms. |
+| `loading` | `false` | When `true`, the Sign In button shows a spinner instead of text. Prevents the staff member from tapping twice. |
+
+**`AdminDashboard.jsx`**
+
+| State | Starting value | What it controls on screen |
+|---|---|---|
+| `modal` | `null` | Controls which modal is open. `null` = no modal. `{ type: 'add' }` = the Add Product form slides up. `{ type: 'edit', product }` = the Edit form opens pre-filled with that product's data. |
+| `delTarget` | `null` | The product currently being considered for deletion. When set, the "Delete Product?" confirmation modal appears showing that product's name. |
+| `orders` | `[]` | The list of orders fetched from the database. Shown in the Recent Orders section with order ID, date, item count, and total. |
+| `ordersErr` | `null` | Error message shown if the orders fetch failed (e.g. backend is down). |
 
 ---
 
@@ -299,46 +343,111 @@ const refreshProducts = async () => {
 
 **Where:** `frontend/src/context/CartContext.jsx`
 
+**What is `useReducer` in plain terms?**
+
+Imagine the cart is a physical basket. `useReducer` is the rulebook for what you're allowed to do with that basket:
+
+- **Rule 1 (ADD_ITEM):** Put an item in. If it's already there, just add one more of it instead of putting in a duplicate.
+- **Rule 2 (REMOVE_ITEM):** Take an item out completely.
+- **Rule 3 (UPDATE_QUANTITY):** Change how many of an item are in the basket. If you set it to zero, remove it entirely.
+- **Rule 4 (CLEAR_CART):** Empty the whole basket (used after checkout).
+
+The key idea: **nothing can change the cart without going through the rulebook.** There's no way to accidentally corrupt the cart state because every change is handled by the same central function.
+
+**Why not just use `useState` for the cart?**
+
+You could use `useState`, but you'd end up with scattered logic like this across multiple components:
+```js
+// In Menu.jsx
+setCart([...cart, { ...product, quantity: 1 }]);
+
+// In Cart.jsx
+setCart(cart.filter(i => i._id !== id));
+
+// In ProductDetails.jsx
+setCart(cart.map(i => i._id === id ? { ...i, quantity: i.quantity + 1 } : i));
+```
+
+With `useReducer`, all of that logic lives in one place. Any component that wants to change the cart just says *what it wants to do* (the action), and the reducer figures out *how to do it*.
+
+**How it works step by step:**
+
+```
+Customer taps "Add" on Chocolate Croissant
+        ↓
+addItem(product) is called in Menu.jsx
+        ↓
+dispatch({ type: 'ADD_ITEM', payload: product })
+        ↓
+cartReducer receives the action
+        ↓
+Checks: is Chocolate Croissant already in the cart?
+  → YES: return cart with that item's quantity + 1
+  → NO:  return cart with the new item appended (quantity: 1)
+        ↓
+React updates the cart state
+        ↓
+CartButton badge updates, Cart page updates, Checkout total updates
+```
+
+**The actual reducer function:**
 ```js
 const cartReducer = (state, action) => {
   switch (action.type) {
+
     case 'ADD_ITEM': {
+      // Is this product already in the cart?
       const existing = state.find((i) => i._id === action.payload._id);
       if (existing) {
+        // Yes — just bump the quantity by 1
         return state.map((i) =>
           i._id === action.payload._id ? { ...i, quantity: i.quantity + 1 } : i
         );
       }
+      // No — add it as a new item with quantity 1
       return [...state, { ...action.payload, quantity: 1 }];
     }
+
     case 'REMOVE_ITEM':
+      // Filter out the item with this _id
       return state.filter((i) => i._id !== action.payload);
+
     case 'UPDATE_QUANTITY': {
       const { id, quantity } = action.payload;
+      // If quantity is 0 or less, remove the item entirely
       if (quantity <= 0) return state.filter((i) => i._id !== id);
+      // Otherwise update the quantity
       return state.map((i) => (i._id === id ? { ...i, quantity } : i));
     }
+
     case 'CLEAR_CART':
+      // Empty the entire cart (called after successful checkout)
       return [];
-    default:
-      return state;
   }
 };
-
-const [cart, dispatch] = useReducer(cartReducer, [], loadCart);
 ```
 
-**What to say:**
-- `useReducer` is used instead of `useState` because the cart has **4 distinct operations** with specific rules
-- The reducer is a **pure function** — same input always produces same output, no side effects
-- All cart logic is centralised in one place — no scattered `setState` calls
-- `loadCart` is the initializer function — reads from localStorage on first render only
-- Actions are dispatched with `dispatch({ type: 'ADD_ITEM', payload: product })`
+**What `useReducer` does in Checkout specifically:**
 
-**Why `useReducer` over `useState` here:**
-- Cart has complex transitions (e.g. "if quantity reaches 0, remove the item entirely")
-- Multiple components dispatch actions — centralised logic prevents bugs
-- Easier to test — you can test the reducer function in isolation
+When the customer confirms their order, `clearCart()` is called which dispatches `CLEAR_CART`. But before that happens, `Checkout.jsx` saves a snapshot of the cart:
+
+```js
+const snapshot = cart.map((i) => ({ ...i })); // save a copy
+setCartSnapshot(snapshot);   // store it in local state
+setOrderTotal(total);        // store the total too
+
+// ... queue animation plays ...
+
+clearCart(); // NOW the cart is emptied
+```
+
+This is important because the receipt needs to show what was ordered — but by the time the receipt appears, the cart is already empty. The snapshot preserves that information.
+
+**Summary of what `useReducer` gives us:**
+- One central place for all cart logic — no scattered `setState` calls
+- Predictable behaviour — the same action always produces the same result
+- Easy to understand — you can read the reducer and know exactly what the cart can and can't do
+- Safe — no component can put the cart into an invalid state
 
 ---
 
