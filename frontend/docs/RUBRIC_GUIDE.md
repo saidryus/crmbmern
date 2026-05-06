@@ -652,6 +652,106 @@ Prevents function recreation on every render — stable reference for child comp
 7. Success receipt shows: order ID, itemised list, total, status
 8. Customer can print the receipt or start a new order
 
+**Step 1 — Customer taps "Confirm Order"**
+
+The button morphs from full-width into a small circle with a spinner (`MorphButton` in `Checkout.jsx`):
+```js
+// MorphButton animates width and border-radius on press
+animate={pressed
+  ? { width: 56, borderRadius: 28 }    // becomes a circle
+  : { width: '100%', borderRadius: 12 } // full-width pill
+}
+```
+This prevents double-tapping and shows the order is being processed.
+
+**Step 2 — Cart is snapshotted before clearing**
+
+Before anything is cleared, a copy of the cart is saved:
+```js
+const snapshot = cart.map((i) => ({ ...i })); // copy every item
+setCartSnapshot(snapshot);  // save for the receipt
+setOrderTotal(total);       // save total before cart is cleared
+setStatus('loading');       // switch to the queue screen
+```
+This is critical — by the time the receipt appears, the cart is empty. The snapshot is what the receipt reads.
+
+**Step 3 — Queue animation plays**
+
+Four steps run in sequence with delays between them:
+```js
+const steps  = ['received', 'preparing', 'baking', 'ready'];
+const delays = [600, 1200, 1200, 800]; // milliseconds between steps
+
+for (let i = 0; i < steps.length; i++) {
+  await new Promise((r) => setTimeout(r, delays[i]));
+  setQueueStep(steps[i]);   // updates the progress indicator on screen
+  setCountdown(Math.max(0, steps.length - 2 - i)); // counts down "Ready in ~X min"
+}
+```
+Each `setQueueStep` update triggers the progress bar and icon animation on screen.
+
+**Step 4 — Order ID is generated and saved to MongoDB**
+
+```js
+const newId = generateOrderId(); // e.g. "CRMB-LX4K2A-F3R9"
+setOrderId(newId);
+
+await createOrder({             // POST /api/orders
+  orderId: newId,
+  items: snapshot.map(item => ({
+    productId: item._id,        // reference to the MongoDB product
+    name:      item.name,
+    price:     item.price,
+    quantity:  item.quantity,
+    image:     item.image,
+  })),
+  total,
+});
+```
+
+On the backend (`backend/routes/orderRoutes.js`):
+```js
+router.post('/', async (req, res) => {
+  const { orderId, items, total } = req.body;
+  const order = await Order.create({ orderId, items, total }); // saved to MongoDB
+  res.status(201).json(order); // 201 = Created
+});
+```
+The order is now permanently stored. The admin dashboard will show it.
+
+**Step 5 — Cart is cleared and receipt is shown**
+
+```js
+playSuccess();        // plays C major arpeggio sound
+setStatus('success'); // switches to the receipt screen
+clearCart();          // dispatches CLEAR_CART to the reducer → cart = []
+```
+
+`clearCart()` dispatches to the cart reducer:
+```js
+case 'CLEAR_CART':
+  return []; // cart is now empty
+```
+
+The `useEffect` in `CartContext` then saves the empty cart to localStorage:
+```js
+useEffect(() => {
+  localStorage.setItem('crmb_cart', JSON.stringify(cart)); // saves []
+}, [cart]);
+```
+
+**Step 6 — Receipt screen renders**
+
+The receipt reads from the snapshot (not the now-empty cart):
+```js
+{cartSnapshot.map((item) => (
+  <div key={item._id}>
+    {item.name} x{item.quantity}  —  {formatPrice(item.price * item.quantity)}
+  </div>
+))}
+```
+Items appear one by one with a staggered animation (70ms apart) — like a real receipt printing out.
+
 ---
 
 ## 🎨 UI/UX — 10 points
