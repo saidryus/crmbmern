@@ -566,6 +566,83 @@ This is important because the receipt needs to show what was ordered — but by 
 
 ---
 
+### useEffect — Side effects and lifecycle (bonus knowledge)
+
+**What is `useEffect` in plain terms?**
+
+`useEffect` is React's way of saying "when something changes, do this." It runs *after* the screen renders, not during it. It's used for anything that needs to happen as a side effect of a state change — fetching data, saving to storage, triggering animations, setting up timers.
+
+Every `useEffect` has two parts:
+- The **function** — what to do
+- The **dependency array** — when to do it
+
+```js
+useEffect(() => {
+  // do something
+}, [watchThis]); // re-runs whenever watchThis changes
+```
+
+**Where it's used in this project and what each one does:**
+
+**`ProductsContext.jsx` — fetch products on load**
+```js
+useEffect(() => {
+  refreshProducts(); // calls GET /api/products
+}, [refreshProducts]);
+```
+Runs once when the app first loads. Fetches all products from the backend and stores them in state. This is what populates the menu.
+
+**`CartContext.jsx` — save cart to localStorage**
+```js
+useEffect(() => {
+  localStorage.setItem('crmb_cart', JSON.stringify(cart));
+}, [cart]);
+```
+Runs every time the cart changes. Saves the updated cart to localStorage automatically. This is why the cart survives a page refresh — it's always kept in sync with storage.
+
+**`AdminDashboard.jsx` — fetch orders on load**
+```js
+useEffect(() => {
+  getOrders()
+    .then(setOrders)
+    .catch((err) => setOrdersErr(err.message));
+}, []);
+```
+The empty `[]` means it runs exactly once — when the admin dashboard first opens. Fetches all orders from the API and stores them in local state for display.
+
+**`CartButton.jsx` — trigger bump animation when item is added**
+```js
+useEffect(() => {
+  if (itemCount > prevCount.current) {
+    controls.start({ scale: [1, 1.2, 0.92, 1.06, 1] });
+  }
+  prevCount.current = itemCount;
+}, [itemCount]);
+```
+Watches the cart item count. When it goes up (item added), triggers the bump animation. When it goes down (item removed), does nothing. `prevCount.current` stores the previous value without causing a re-render.
+
+**`Splash.jsx` — check if returning customer**
+```js
+useEffect(() => {
+  const history = localStorage.getItem('crmb_order_history');
+  if (history && JSON.parse(history).length > 0) setReturning(true);
+}, []);
+```
+Runs once on mount. Checks localStorage for past orders. If found, shows the "Welcome back" greeting.
+
+**`App.jsx` — track previous route for slide direction**
+```js
+useEffect(() => { prevPath.current = location.pathname; });
+```
+Runs after every navigation. Saves the current path so the next navigation can calculate which direction to slide — forward or backward.
+
+**The dependency array rules:**
+- `[]` — runs once on mount only
+- `[value]` — runs on mount and every time `value` changes
+- No array — runs after every single render (rarely used)
+
+---
+
 ### Best Practices — Clean usage, optimization (4 pts)
 
 **Where:** Throughout the codebase
