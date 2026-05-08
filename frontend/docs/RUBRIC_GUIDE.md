@@ -871,6 +871,37 @@ An API that uses HTTP methods (GET, POST, PUT, DELETE) to perform operations on 
 **"How is the admin password secured?"**
 It's hashed with bcrypt before being stored in MongoDB. bcrypt is a one-way hashing algorithm — you can verify a password against the hash, but you can't reverse the hash to get the original password. The plain-text password is never stored anywhere.
 
+**"Do you have controllers? Where are they?"**
+Yes — they're inline inside the route files. In this project the route and controller are in the same file. The route is `router.METHOD('path')` and the controller is the function that follows it. For example in `orderRoutes.js`:
+
+```js
+// The route — defines the URL and HTTP method
+router.post('/', async (req, res) => {
+
+  // The controller — the actual logic
+  const { orderId, items, total } = req.body;
+  const order = await Order.create({ orderId, items, total });
+  res.status(201).json(order);
+
+});
+```
+
+If they were separated into two files it would look like this:
+
+```js
+// controllers/orderController.js — only the logic
+const createOrder = async (req, res) => {
+  const { orderId, items, total } = req.body;
+  const order = await Order.create({ orderId, items, total });
+  res.status(201).json(order);
+};
+
+// routes/orderRoutes.js — only the route
+router.post('/', createOrder);
+```
+
+The logic is identical — it's just a question of which file it lives in. Inline controllers are appropriate for this project size because each handler is only a few lines. Both patterns are used in the industry. Separate controllers are the more scalable choice as a project grows.
+
 ---
 
 *CRMB Artisan Bakery & Café — Internal Technical Reference*
